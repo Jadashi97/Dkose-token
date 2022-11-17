@@ -27,6 +27,7 @@ actor Token {
     };
 
     // use the shared keyword to pass a message or token from person to person
+    // function to allow another account to receive tokens
     public shared (msg) func payOut() : async Text {
         // Debug.print(debug_show (msg.caller));
 
@@ -36,6 +37,23 @@ actor Token {
             return "Success";
         } else {
             return "Alreay claimed your tokens";
+        };
+    };
+
+    // function to allow transfer of an amount from the sender to the recipient
+    public shared (msg) func transfer(to : Principal, amount : Nat) : async Text {
+        let fromBalance = await balanceOf(msg.caller);
+        // math calc to figure out the amount
+        if (fromBalance > amount) {
+            let newFromBalance : Nat = fromBalance - amount;
+            balances.put(msg.caller, newFromBalance);
+
+            let toBalance = await balanceOf(to);
+            let newToBalance = toBalance + amount;
+            balances.put(to, newToBalance);
+            return "Success";
+        } else {
+            return "Insufficient Funds";
         };
     };
 };
