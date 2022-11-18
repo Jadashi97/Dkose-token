@@ -1,15 +1,23 @@
 import Principal "mo:base/Principal";
 import HashMap "mo:base/HashMap";
 import Debug "mo:base/Debug";
+import Iter "mo:base/Iter";
 
 actor Token {
-    var owner : Principal = Principal.fromText("nckdq-uwcvi-w4kdg-wdoq5-npzs4-scxge-mp4vj-4ld2e-nhx5o-eixf4-fqe");
-    var totalSupply : Nat = 1000000000;
-    var symbol : Text = "DKOSE";
+    Debug.print("Hello dunia");
 
-    var balances = HashMap.HashMap<Principal, Nat>(1, Principal.equal, Principal.hash);
+    let owner : Principal = Principal.fromText("nckdq-uwcvi-w4kdg-wdoq5-npzs4-scxge-mp4vj-4ld2e-nhx5o-eixf4-fqe");
+    let totalSupply : Nat = 1000000000;
+    let symbol : Text = "DKOSE";
 
-    balances.put(owner, totalSupply); //this gives all the minted tokens to owner
+    // inorder to persist our balances we have to make it stable
+    // but some types are not stable and hence we set it into a varible and use preupgrade and postupgrade methods to chnage it
+    private stable var balanceEntries : [(Principal, Nat)] = [];
+
+    private var balances = HashMap.HashMap<Principal, Nat>(1, Principal.equal, Principal.hash);
+    if (balances.size() < 1) {
+        balances.put(owner, totalSupply); //this gives all the minted tokens to owner
+    };
 
     // solving the balance left in the token amount
     public query func balanceOf(who : Principal) : async Nat {
@@ -29,12 +37,11 @@ actor Token {
     // use the shared keyword to pass a message or token from person to person
     // function to allow another account to receive tokens
     public shared (msg) func payOut() : async Text {
-        // Debug.print(debug_show (msg.caller));
 
         if (balances.get(msg.caller) == null) {
             let amount = 1000;
-            balances.put(msg.caller, amount);
-            return "Success";
+            let result = await transfer(msg.caller, amount);
+            return result;
         } else {
             return "Alreay claimed your tokens";
         };
@@ -54,6 +61,19 @@ actor Token {
             return "Success";
         } else {
             return "Insufficient Funds";
+        };
+    };
+
+    //clears and put the balance into balanceEntries to a hash map
+    system func preupgrade() {
+        balanceEntries := Iter.toArray(balances.entries());
+    };
+
+    //sets it back to the entries before
+    system func postupgrade() {
+        balances := HashMap.fromIter<Principal, Nat>(balanceEntries.vals(), 1, Principal.equal, Principal.hash);
+        if (balances.size() < 1) {
+            balances.put(owner, totalSupply); //this gives all the minted tokens to owner
         };
     };
 };
